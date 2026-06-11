@@ -15,15 +15,19 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { FlagIcon } from "@/src/components/FlagIcon";
 import { LanguagePair } from "@/src/components/LanguagePair";
 import { LANGUAGES, langName } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
-import { colors, fonts, radius, shadow, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation, User } from "@/src/utils/api";
 
 export default function Connect() {
   const { user } = useAuth();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [partners, setPartners] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +72,7 @@ export default function Connect() {
     { key: "all", label: "Everyone" },
     ...LANGUAGES.slice(0, 10).map((l) => ({
       key: l.code,
-      label: `${l.flag} ${l.name}`,
+      label: l.name,
     })),
   ];
 
@@ -110,6 +114,9 @@ export default function Connect() {
                 onPress={() => setFilter(chip.key)}
                 style={[styles.filterChip, active && styles.filterChipActive]}
               >
+                {chip.key !== "match" && chip.key !== "all" && (
+                  <FlagIcon code={chip.key} size={14} />
+                )}
                 <Text
                   style={[
                     styles.filterText,
@@ -196,7 +203,8 @@ export default function Connect() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surfaceSecondary,
@@ -240,6 +248,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,

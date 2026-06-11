@@ -17,13 +17,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
-import { langFlag } from "@/src/constants/languages";
-import { colors, fonts, radius, shadow, spacing } from "@/src/theme";
+import { FlagIcon } from "@/src/components/FlagIcon";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, Moment } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
 
 export default function Moments() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [moments, setMoments] = useState<Moment[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -117,13 +120,18 @@ export default function Moments() {
                   size={42}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.authorName}>
-                    {item.author?.name || "Unknown"}{" "}
-                    <Text style={styles.authorLang}>
-                      {langFlag(item.author?.native_language)} →{" "}
-                      {langFlag(item.author?.learning_language)}
+                  <View style={styles.authorRow}>
+                    <Text style={styles.authorName}>
+                      {item.author?.name || "Unknown"}
                     </Text>
-                  </Text>
+                    <FlagIcon code={item.author?.native_language} size={14} />
+                    <Ionicons
+                      name="arrow-forward"
+                      size={10}
+                      color={colors.onSurfaceSecondary}
+                    />
+                    <FlagIcon code={item.author?.learning_language} size={14} />
+                  </View>
                   <Text style={styles.cardTime}>{timeAgo(item.created_at)}</Text>
                 </View>
               </View>
@@ -219,7 +227,8 @@ export default function Moments() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surfaceSecondary,
@@ -257,13 +266,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
   },
+  authorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs + 2,
+  },
   authorName: {
     fontFamily: fonts.displaySemi,
     fontSize: 15,
     color: colors.onSurface,
-  },
-  authorLang: {
-    fontSize: 12,
   },
   cardTime: {
     fontFamily: fonts.text,

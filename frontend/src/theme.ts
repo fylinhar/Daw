@@ -1,5 +1,27 @@
-// LinguaConnect design tokens — Tactile/Playful LIGHT, HelloTalk-like sky blue.
-export const colors = {
+// LinguaConnect design tokens — Tactile/Playful, HelloTalk-like sky blue.
+// Light (default) + Dark palettes. Structure identical so screens swap freely.
+export interface ThemeColors {
+  surface: string;
+  onSurface: string;
+  surfaceSecondary: string;
+  onSurfaceSecondary: string;
+  surfaceTertiary: string;
+  onSurfaceTertiary: string;
+  brand: string;
+  onBrand: string;
+  brandSecondary: string;
+  onBrandSecondary: string;
+  brandTertiary: string;
+  onBrandTertiary: string;
+  success: string;
+  warning: string;
+  error: string;
+  border: string;
+  borderStrong: string;
+  divider: string;
+}
+
+export const lightColors: ThemeColors = {
   surface: "#FFFFFF",
   onSurface: "#111827",
   surfaceSecondary: "#F4F6F8",
@@ -18,6 +40,27 @@ export const colors = {
   border: "#E5E7EB",
   borderStrong: "#D1D5DB",
   divider: "#F3F4F6",
+};
+
+export const darkColors: ThemeColors = {
+  surface: "#0F172A",
+  onSurface: "#F1F5F9",
+  surfaceSecondary: "#1E293B",
+  onSurfaceSecondary: "#94A3B8",
+  surfaceTertiary: "#334155",
+  onSurfaceTertiary: "#CBD5E1",
+  brand: "#38BDF8",
+  onBrand: "#06283D",
+  brandSecondary: "#0C4A6E",
+  onBrandSecondary: "#BAE6FD",
+  brandTertiary: "#0B3A55",
+  onBrandTertiary: "#7DD3FC",
+  success: "#34D399",
+  warning: "#FBBF24",
+  error: "#F87171",
+  border: "#334155",
+  borderStrong: "#475569",
+  divider: "#1E293B",
 };
 
 export const spacing = {

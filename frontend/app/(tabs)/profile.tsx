@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { FlagIcon } from "@/src/components/FlagIcon";
 import { LanguagePair } from "@/src/components/LanguagePair";
 import {
   LANGUAGES,
@@ -20,12 +22,15 @@ import {
   langName,
 } from "@/src/constants/languages";
 import { useAuth } from "@/src/context/AuthContext";
-import { colors, fonts, radius, shadow, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, User } from "@/src/utils/api";
 
 export default function Profile() {
   const { user, setUser, logout } = useAuth();
+  const { colors, mode, toggleMode } = useTheme();
   const router = useRouter();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name || "");
   const [bio, setBio] = useState(user?.bio || "");
@@ -51,7 +56,7 @@ export default function Profile() {
       setUser(updated);
       setEditing(false);
     } catch {
-      // stay in edit mode so the user can retry
+      // stay in edit mode for retry
     } finally {
       setSaving(false);
     }
@@ -77,7 +82,7 @@ export default function Profile() {
               <ActivityIndicator size="small" color={colors.brand} />
             ) : (
               <Text style={styles.editBtnText}>
-                {editing ? "Save" : "Edit"}
+                {editing ? "Save" : "Edit Profile"}
               </Text>
             )}
           </Pressable>
@@ -109,6 +114,7 @@ export default function Profile() {
           )}
         </View>
 
+        <Text style={styles.groupLabel}>Profile details</Text>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About me</Text>
           {editing ? (
@@ -159,13 +165,14 @@ export default function Profile() {
                         onPress={() => setLearningLang(lang.code)}
                         style={[styles.chip, active && styles.chipActive]}
                       >
+                        <FlagIcon code={lang.code} size={14} />
                         <Text
                           style={[
                             styles.chipText,
                             active && styles.chipTextActive,
                           ]}
                         >
-                          {lang.flag} {lang.name}
+                          {lang.name}
                         </Text>
                       </Pressable>
                     );
@@ -201,6 +208,71 @@ export default function Profile() {
           </>
         )}
 
+        <Text style={styles.groupLabel}>Settings</Text>
+        <View style={styles.section}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingIcon}>
+              <Ionicons name="moon" size={18} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingTitle}>Dark mode</Text>
+              <Text style={styles.settingSub}>
+                {mode === "dark" ? "On — easy on the eyes" : "Off — bright & friendly"}
+              </Text>
+            </View>
+            <Switch
+              testID="dark-mode-switch"
+              value={mode === "dark"}
+              onValueChange={toggleMode}
+              trackColor={{ false: colors.surfaceTertiary, true: colors.brand }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <View style={styles.settingDivider} />
+          <View style={styles.settingRow}>
+            <View style={styles.settingIcon}>
+              <Ionicons name="language" size={18} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingTitle}>Native language</Text>
+              <Text style={styles.settingSub}>
+                {langName(user.native_language)} — partners learn this from you
+              </Text>
+            </View>
+            <FlagIcon code={user.native_language} size={22} />
+          </View>
+          <View style={styles.settingDivider} />
+          <View style={styles.settingRow}>
+            <View style={styles.settingIcon}>
+              <Ionicons name="school" size={18} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingTitle}>Learning</Text>
+              <Text style={styles.settingSub}>
+                {langName(user.learning_language)}
+                {user.proficiency ? ` · ${user.proficiency}` : ""} — tap Edit
+                Profile to change
+              </Text>
+            </View>
+            <FlagIcon code={user.learning_language} size={22} />
+          </View>
+        </View>
+
+        <Text style={styles.groupLabel}>About</Text>
+        <View style={styles.section}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingIcon}>
+              <Ionicons name="chatbubbles" size={18} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingTitle}>LinguaConnect</Text>
+              <Text style={styles.settingSub}>
+                Version 1.1 · Language exchange, AI tools, voice rooms & calls
+              </Text>
+            </View>
+          </View>
+        </View>
+
         <Pressable testID="logout-btn" style={styles.logoutBtn} onPress={doLogout}>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={styles.logoutText}>Log Out</Text>
@@ -210,133 +282,176 @@ export default function Profile() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceSecondary,
-  },
-  scroll: {
-    padding: spacing.xl,
-    paddingBottom: spacing.xxxl,
-    gap: spacing.lg,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    color: colors.onSurface,
-  },
-  editBtn: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brandTertiary,
-  },
-  editBtnText: {
-    fontFamily: fonts.textBold,
-    fontSize: 14,
-    color: colors.onBrandTertiary,
-  },
-  profileCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.xl,
-    alignItems: "center",
-    gap: spacing.md,
-    ...shadow.card,
-  },
-  name: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    color: colors.onSurface,
-  },
-  email: {
-    fontFamily: fonts.text,
-    fontSize: 13,
-    color: colors.onSurfaceSecondary,
-  },
-  proficiency: {
-    fontFamily: fonts.textSemi,
-    fontSize: 13,
-    color: colors.onSurfaceSecondary,
-  },
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    ...shadow.card,
-  },
-  sectionTitle: {
-    fontFamily: fonts.textBold,
-    fontSize: 13,
-    color: colors.onSurfaceSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  bodyText: {
-    fontFamily: fonts.text,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.onSurface,
-  },
-  input: {
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontFamily: fonts.text,
-    fontSize: 15,
-    color: colors.onSurface,
-  },
-  nameInput: {
-    alignSelf: "stretch",
-    textAlign: "center",
-  },
-  bioInput: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
-  chipWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceSecondary,
-  },
-  chipActive: {
-    backgroundColor: colors.brandTertiary,
-  },
-  chipText: {
-    fontFamily: fonts.textSemi,
-    fontSize: 13,
-    color: colors.onSurfaceTertiary,
-  },
-  chipTextActive: {
-    color: colors.onBrandTertiary,
-    fontFamily: fonts.textBold,
-  },
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingVertical: spacing.lg,
-    ...shadow.card,
-  },
-  logoutText: {
-    fontFamily: fonts.textBold,
-    fontSize: 15,
-    color: colors.error,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    scroll: {
+      padding: spacing.xl,
+      paddingBottom: spacing.xxxl,
+      gap: spacing.lg,
+    },
+    headerRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    headerTitle: {
+      fontFamily: fonts.display,
+      fontSize: 28,
+      color: colors.onSurface,
+    },
+    editBtn: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: colors.brandTertiary,
+    },
+    editBtnText: {
+      fontFamily: fonts.textBold,
+      fontSize: 14,
+      color: colors.onBrandTertiary,
+    },
+    profileCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.xl,
+      alignItems: "center",
+      gap: spacing.md,
+      ...shadow.card,
+    },
+    name: {
+      fontFamily: fonts.display,
+      fontSize: 22,
+      color: colors.onSurface,
+    },
+    email: {
+      fontFamily: fonts.text,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+    },
+    proficiency: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+    },
+    groupLabel: {
+      fontFamily: fonts.textBold,
+      fontSize: 12,
+      color: colors.onSurfaceSecondary,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginTop: spacing.sm,
+      marginBottom: -spacing.sm,
+    },
+    section: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      padding: spacing.lg,
+      gap: spacing.sm,
+      ...shadow.card,
+    },
+    sectionTitle: {
+      fontFamily: fonts.textBold,
+      fontSize: 13,
+      color: colors.onSurfaceSecondary,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    bodyText: {
+      fontFamily: fonts.text,
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.onSurface,
+    },
+    input: {
+      backgroundColor: colors.surfaceSecondary,
+      borderRadius: radius.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      fontFamily: fonts.text,
+      fontSize: 15,
+      color: colors.onSurface,
+    },
+    nameInput: {
+      alignSelf: "stretch",
+      textAlign: "center",
+    },
+    bioInput: {
+      minHeight: 80,
+      textAlignVertical: "top",
+    },
+    chipWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceSecondary,
+    },
+    chipActive: {
+      backgroundColor: colors.brandTertiary,
+    },
+    chipText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 13,
+      color: colors.onSurfaceTertiary,
+    },
+    chipTextActive: {
+      color: colors.onBrandTertiary,
+      fontFamily: fonts.textBold,
+    },
+    settingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      paddingVertical: spacing.xs,
+    },
+    settingIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: radius.sm,
+      backgroundColor: colors.brandTertiary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    settingTitle: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: colors.onSurface,
+    },
+    settingSub: {
+      fontFamily: fonts.text,
+      fontSize: 12,
+      color: colors.onSurfaceSecondary,
+      marginTop: 1,
+    },
+    settingDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.divider,
+      marginVertical: spacing.xs,
+    },
+    logoutBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.md,
+      paddingVertical: spacing.lg,
+      ...shadow.card,
+    },
+    logoutText: {
+      fontFamily: fonts.textBold,
+      fontSize: 15,
+      color: colors.error,
+    },
+  });

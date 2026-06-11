@@ -37,6 +37,35 @@ export const PROFICIENCY_LEVELS = [
 
 const byCode = Object.fromEntries(LANGUAGES.map((l) => [l.code, l]));
 
+// language code -> circle flag country code (hatscripts circle-flags CDN)
+const FLAG_COUNTRY: Record<string, string> = {
+  en: "gb",
+  es: "es",
+  fr: "fr",
+  de: "de",
+  it: "it",
+  pt: "br",
+  zh: "cn",
+  ja: "jp",
+  ko: "kr",
+  ru: "ru",
+  ar: "sa",
+  hi: "in",
+  tr: "tr",
+  nl: "nl",
+  pl: "pl",
+  sv: "se",
+  vi: "vn",
+  th: "th",
+  id: "id",
+  el: "gr",
+};
+
+export const flagUrl = (code?: string | null): string =>
+  `https://hatscripts.github.io/circle-flags/flags/${
+    (code && FLAG_COUNTRY[code]) || "xx"
+  }.svg`;
+
 export const langName = (code?: string | null): string =>
   (code && byCode[code]?.name) || code || "?";
 

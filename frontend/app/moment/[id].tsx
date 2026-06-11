@@ -16,7 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
-import { colors, fonts, radius, shadow, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
 import { api, Moment, MomentComment } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
 
@@ -27,6 +28,8 @@ export default function MomentDetail() {
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const load = useCallback(async () => {
     try {
@@ -195,7 +198,8 @@ export default function MomentDetail() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surfaceSecondary,

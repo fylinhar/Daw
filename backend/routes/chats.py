@@ -1,11 +1,12 @@
+import base64
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
-from db import conversations_col, messages_col, users_col
-from models import ConversationCreate, MessageCreate, user_card
+from db import audio_col, conversations_col, messages_col, users_col
+from models import ConversationCreate, MessageCreate, VoiceMessageCreate, user_card
 from ws_manager import manager
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -17,6 +18,9 @@ def message_public(doc: dict) -> dict:
         "conversation_id": doc["conversation_id"],
         "sender_id": doc["sender_id"],
         "text": doc["text"],
+        "type": doc.get("type", "text"),
+        "audio_id": doc.get("audio_id"),
+        "duration_ms": doc.get("duration_ms"),
         "created_at": doc["created_at"],
     }
 
@@ -111,6 +115,55 @@ async def send_message(conversation_id: str, body: MessageCreate, current_user: 
         {
             "$set": {
                 "last_message": {"text": body.text, "sender_id": current_user["_id"], "created_at": now},
+                "updated_at": now,
+            },
+            "$inc": {f"unread.{partner_id}": 1},
+        },
+    )
+    await manager.send_to_user(
+        partner_id,
+        {
+            "type": "new_message",
+            "conversation_id": conversation_id,
+            "message": msg,
+            "sender": user_card(current_user),
+        },
+    )
+    return msg
+
+
+@router.post("/{conversation_id}/voice", status_code=201)
+async def send_voice_message(
+    conversation_id: str, body: VoiceMessageCreate, current_user: CurrentUser
+):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    try:
+        audio_bytes = base64.b64decode(body.audio_base64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid audio data")
+    if len(audio_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Audio too large (max 10MB)")
+    audio_id = str(uuid.uuid4())
+    await audio_col.insert_one({"_id": audio_id, "data": audio_bytes, "mime": body.mime})
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "conversation_id": conversation_id,
+        "sender_id": current_user["_id"],
+        "text": "Voice message",
+        "type": "voice",
+        "audio_id": audio_id,
+        "duration_ms": body.duration_ms,
+        "created_at": now,
+    }
+    await messages_col.insert_one(doc)
+    msg = message_public(doc)
+    await conversations_col.update_one(
+        {"_id": conversation_id},
+        {
+            "$set": {
+                "last_message": {"text": "🎤 Voice message", "sender_id": current_user["_id"], "created_at": now},
                 "updated_at": now,
             },
             "$inc": {f"unread.{partner_id}": 1},

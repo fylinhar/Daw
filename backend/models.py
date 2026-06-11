@@ -50,6 +50,26 @@ class CorrectRequest(BaseModel):
     language: Optional[str] = None
 
 
+class VoiceMessageCreate(BaseModel):
+    audio_base64: str = Field(min_length=1)
+    mime: str = "audio/m4a"
+    duration_ms: int = 0
+
+
+class RoomCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+    language: str = Field(min_length=2, max_length=8)
+
+
+class RoomRoleUpdate(BaseModel):
+    user_id: str
+    role: str = Field(pattern="^(speaker|listener)$")
+
+
+class RoomMessageCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+
+
 def user_public(doc: dict) -> dict:
     return {
         "id": doc["_id"],

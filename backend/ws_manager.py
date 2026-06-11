@@ -27,5 +27,9 @@ class ConnectionManager:
             except Exception:
                 self.disconnect(user_id, ws)
 
+    async def broadcast(self, user_ids: list[str], event: dict):
+        for user_id in user_ids:
+            await self.send_to_user(user_id, event)
+
 
 manager = ConnectionManager()

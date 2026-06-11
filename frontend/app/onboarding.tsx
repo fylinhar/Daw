@@ -14,8 +14,10 @@ import {
   LANGUAGES,
   PROFICIENCY_LEVELS,
 } from "@/src/constants/languages";
+import { FlagIcon } from "@/src/components/FlagIcon";
 import { useAuth } from "@/src/context/AuthContext";
-import { colors, fonts, radius, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, User } from "@/src/utils/api";
 
 export default function Onboarding() {
@@ -27,6 +29,8 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const { setUser } = useAuth();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const steps = [
     {
@@ -85,7 +89,7 @@ export default function Onboarding() {
             onPress={() => onSelect(lang.code)}
             style={[styles.langChip, active && styles.langChipActive]}
           >
-            <Text style={styles.langFlag}>{lang.flag}</Text>
+            <FlagIcon code={lang.code} size={20} />
             <Text
               style={[styles.langName, active && styles.langNameActive]}
             >
@@ -178,7 +182,8 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,

@@ -1,8 +1,9 @@
 import { Image } from "expo-image";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
-import { colors, fonts } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts } from "@/src/theme";
 
 interface AvatarProps {
   name?: string | null;
@@ -17,6 +18,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 48,
   testID,
 }) => {
+  const { colors } = useTheme();
   const style = { width: size, height: size, borderRadius: size / 2 };
   if (url) {
     return (
@@ -36,22 +38,26 @@ export const Avatar: React.FC<AvatarProps> = ({
     .join("")
     .toUpperCase();
   return (
-    <View testID={testID} style={[styles.fallback, style]}>
-      <Text style={[styles.initials, { fontSize: size * 0.38 }]}>
+    <View
+      testID={testID}
+      style={[
+        style,
+        {
+          backgroundColor: colors.brandTertiary,
+          alignItems: "center",
+          justifyContent: "center",
+        },
+      ]}
+    >
+      <Text
+        style={{
+          color: colors.onBrandTertiary,
+          fontFamily: fonts.displaySemi,
+          fontSize: size * 0.38,
+        }}
+      >
         {initials}
       </Text>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  fallback: {
-    backgroundColor: colors.brandTertiary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  initials: {
-    color: colors.onBrandTertiary,
-    fontFamily: fonts.displaySemi,
-  },
-});

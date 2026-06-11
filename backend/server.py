@@ -15,9 +15,11 @@ from starlette.middleware.cors import CORSMiddleware  # noqa: E402
 from auth_utils import decode_token  # noqa: E402
 from db import client, ensure_indexes  # noqa: E402
 from routes.ai import router as ai_router  # noqa: E402
+from routes.audio import router as audio_router  # noqa: E402
 from routes.auth import router as auth_router  # noqa: E402
 from routes.chats import router as chats_router  # noqa: E402
 from routes.moments import router as moments_router  # noqa: E402
+from routes.rooms import router as rooms_router  # noqa: E402
 from routes.users import router as users_router  # noqa: E402
 from ws_manager import manager  # noqa: E402
 
@@ -43,8 +45,22 @@ async def root():
     return {"message": "LinguaConnect API"}
 
 
+RELAY_EVENT_TYPES = {
+    "call_offer",
+    "call_answer",
+    "call_ice",
+    "call_end",
+    "call_decline",
+    "rtc_offer",
+    "rtc_answer",
+    "rtc_ice",
+}
+
+
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str):
+    import json as _json
+
     try:
         user_id = decode_token(token)
     except PyJWTError:
@@ -53,13 +69,37 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     await manager.connect(user_id, websocket)
     try:
         while True:
-            # Keepalive: client may send pings; we just echo acks.
-            await websocket.receive_text()
+            raw = await websocket.receive_text()
+            try:
+                data = _json.loads(raw)
+            except ValueError:
+                continue
+            event_type = data.get("type")
+            target = data.get("to")
+            if event_type in RELAY_EVENT_TYPES and target:
+                data["from"] = user_id
+                if event_type == "call_offer":
+                    from db import users_col
+
+                    caller = await users_col.find_one({"_id": user_id})
+                    if caller:
+                        from models import user_card
+
+                        data["caller"] = user_card(caller)
+                await manager.send_to_user(target, data)
     except WebSocketDisconnect:
         manager.disconnect(user_id, websocket)
 
 
-for router in (auth_router, users_router, chats_router, moments_router, ai_router):
+for router in (
+    auth_router,
+    users_router,
+    chats_router,
+    moments_router,
+    ai_router,
+    rooms_router,
+    audio_router,
+):
     app.include_router(router, prefix="/api")
 
 app.add_middleware(

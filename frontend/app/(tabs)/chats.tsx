@@ -12,13 +12,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { useTheme } from "@/src/context/ThemeContext";
 import { useChatSocket } from "@/src/hooks/use-chat-socket";
-import { colors, fonts, radius, spacing } from "@/src/theme";
+import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation } from "@/src/utils/api";
 import { timeAgo } from "@/src/utils/time";
 
 export default function Chats() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -123,7 +126,8 @@ export default function Chats() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface,

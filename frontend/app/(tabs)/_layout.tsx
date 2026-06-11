@@ -3,9 +3,11 @@ import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
 
-import { colors, fonts } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts } from "@/src/theme";
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{
@@ -44,6 +46,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="voice"
+        options={{
+          title: "Voice",
+          tabBarButtonTestID: "tab-voice",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="mic" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="moments"
         options={{
           title: "Moments",
@@ -57,6 +69,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: "Me",
+          tabBarButtonTestID: "tab-profile",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

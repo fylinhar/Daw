@@ -16,9 +16,23 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "@/src/context/AuthContext";
+import { CallProvider } from "@/src/context/CallContext";
+import { ThemeProvider, useTheme } from "@/src/context/ThemeContext";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 
 SplashScreen.preventAutoHideAsync();
+
+function ThemedApp() {
+  const { mode } = useTheme();
+  return (
+    <AuthProvider>
+      <CallProvider>
+        <StatusBar style={mode === "dark" ? "light" : "dark"} />
+        <Stack screenOptions={{ headerShown: false }} />
+      </CallProvider>
+    </AuthProvider>
+  );
+}
 
 export default function RootLayout() {
   const [iconsLoaded, iconsError] = useIconFonts();
@@ -41,10 +55,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false }} />
-        </AuthProvider>
+        <ThemeProvider>
+          <ThemedApp />
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

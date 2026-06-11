@@ -60,6 +60,9 @@ export interface Message {
   conversation_id: string;
   sender_id: string;
   text: string;
+  type?: "text" | "voice";
+  audio_id?: string | null;
+  duration_ms?: number | null;
   created_at: string;
 }
 
@@ -88,3 +91,31 @@ export interface MomentComment {
   text: string;
   created_at: string;
 }
+
+export interface RoomMember extends User {
+  role: "host" | "speaker" | "listener";
+  mic_on: boolean;
+  hand_raised: boolean;
+}
+
+export interface Room {
+  id: string;
+  title: string;
+  language: string;
+  host: User | null;
+  is_live?: boolean;
+  members?: RoomMember[];
+  member_count: number;
+  created_at: string;
+}
+
+export interface RoomMessage {
+  id: string;
+  room_id: string;
+  sender: User;
+  text: string;
+  created_at: string;
+}
+
+export const audioUrl = (audioId: string): string =>
+  `${API_URL}/api/audio/${audioId}`;

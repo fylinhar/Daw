@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/src/context/AuthContext";
-import { colors, fonts, radius, spacing } from "@/src/theme";
+import { useTheme } from "@/src/context/ThemeContext";
+import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 
 const HERO_URL =
   "https://images.unsplash.com/photo-1669950200209-69d8292c032f?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200";
@@ -20,6 +21,8 @@ const HERO_URL =
 export default function Index() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   if (loading) {
     return (
@@ -73,7 +76,8 @@ export default function Index() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
   loading: {
     flex: 1,
     backgroundColor: colors.surface,
