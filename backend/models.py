@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -101,6 +102,22 @@ def _learning_list(doc: dict) -> list:
     return [doc["learning_language"]] if doc.get("learning_language") else []
 
 
+def _active_item(item: dict | None) -> dict | None:
+    if not item:
+        return None
+    exp = item.get("expires_at")
+    if exp and exp < datetime.now(timezone.utc).isoformat():
+        return None
+    return item
+
+
+def _vip_active(doc: dict) -> bool:
+    if not doc.get("is_vip"):
+        return False
+    exp = doc.get("vip_expires_at")
+    return not exp or exp > datetime.now(timezone.utc).isoformat()
+
+
 def apply_privacy(card: dict, doc: dict) -> dict:
     """Strip fields the user chose to hide (viewed by others)."""
     p = doc.get("privacy") or {}
@@ -133,7 +150,11 @@ def user_public(doc: dict) -> dict:
         "age": doc.get("age"),
         "interests": doc.get("interests") or [],
         "gender": doc.get("gender"),
-        "is_vip": doc.get("is_vip", False),
+        "is_vip": _vip_active(doc),
+        "vip_tier": doc.get("vip_tier"),
+        "active_badge": _active_item(doc.get("active_badge")),
+        "active_frame": _active_item(doc.get("active_frame")),
+        "coins": doc.get("coins", 0),
         "privacy": doc.get("privacy") or {},
         "streak_count": doc.get("streak_count", 0),
         "created_at": doc.get("created_at"),
@@ -155,6 +176,9 @@ def user_card(doc: dict) -> dict:
         "age": doc.get("age"),
         "interests": doc.get("interests") or [],
         "gender": doc.get("gender"),
-        "is_vip": doc.get("is_vip", False),
+        "is_vip": _vip_active(doc),
+        "vip_tier": doc.get("vip_tier"),
+        "active_badge": _active_item(doc.get("active_badge")),
+        "active_frame": _active_item(doc.get("active_frame")),
         "bio": doc.get("bio"),
     }

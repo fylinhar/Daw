@@ -42,6 +42,7 @@ async def register(body: RegisterRequest):
         "learning_language": None,
         "proficiency": None,
         "streak_count": 1,
+        "coins": 1000,
         "last_active_date": datetime.now(timezone.utc).date().isoformat(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }

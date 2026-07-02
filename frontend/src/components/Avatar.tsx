@@ -17,6 +17,10 @@ interface AvatarProps {
   flagCode?: string | null;
   /** Shows a green presence dot at the top-right when true. */
   online?: boolean;
+  /** Colored ring around the avatar (marketplace frame). */
+  frameColor?: string | null;
+  /** Green "active speaker" ring (voice rooms). Takes priority over frameColor. */
+  isSpeaking?: boolean;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -26,6 +30,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   testID,
   flagCode,
   online,
+  frameColor,
+  isSpeaking,
 }) => {
   const { colors } = useTheme();
   const baseStyle = { width: size, height: size, borderRadius: size / 2 };
@@ -70,13 +76,33 @@ export const Avatar: React.FC<AvatarProps> = ({
     </View>
   );
 
-  if (!flagCode && !online) return content;
+  const ringColor = isSpeaking ? "#22C55E" : frameColor || null;
+
+  if (!flagCode && !online && !ringColor) return content;
 
   const dotSize = Math.max(9, Math.round(size * 0.22));
+  const ringWidth = Math.max(2, Math.round(size * 0.05));
+  const ringGap = ringWidth + 1;
 
   return (
     <View style={[styles.wrap, baseStyle]}>
       {content}
+      {ringColor ? (
+        <View
+          pointerEvents="none"
+          testID={testID ? `${testID}-ring` : undefined}
+          style={{
+            position: "absolute",
+            top: -ringGap,
+            left: -ringGap,
+            right: -ringGap,
+            bottom: -ringGap,
+            borderRadius: (size + ringGap * 2) / 2,
+            borderWidth: ringWidth,
+            borderColor: ringColor,
+          }}
+        />
+      ) : null}
       {flagCode ? (
         <Image
           testID={testID ? `${testID}-flag` : undefined}

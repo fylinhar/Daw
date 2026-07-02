@@ -97,11 +97,12 @@ export default function UserProfile() {
               size={96}
               flagCode={countryToCode(profile.country)}
               online={profile.is_online}
+              frameColor={profile.active_frame?.color}
             />
             <View style={styles.nameRow}>
               <Text style={styles.name}>{profile.name}</Text>
               <GenderBadge gender={profile.gender} />
-              {profile.is_vip && <VipBadge />}
+              {profile.is_vip && <VipBadge tier={profile.vip_tier} />}
             </View>
             {profile.country && (
               <Text style={styles.country}>

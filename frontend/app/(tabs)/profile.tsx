@@ -265,6 +265,7 @@ export default function Profile() {
               url={user.avatar_url}
               size={80}
               flagCode={countryToCode(user.country)}
+              frameColor={user.active_frame?.color}
             />
             <Pressable
               testID="avatar-edit-btn"
@@ -292,7 +293,7 @@ export default function Profile() {
             <View style={styles.nameRow}>
               <Text style={styles.name}>{user.name}</Text>
               <GenderBadge gender={user.gender} />
-              {user.is_vip && <VipBadge />}
+              {user.is_vip && <VipBadge tier={user.vip_tier} />}
             </View>
           )}
           <Text style={styles.email}>{user.email}</Text>
@@ -768,7 +769,25 @@ export default function Profile() {
 
         <Text style={styles.groupLabel}>Privacy</Text>
         <View style={styles.section}>
-          {(
+          <Pressable
+            testID="collapse-privacy"
+            style={styles.collapseHeader}
+            onPress={() => toggleSection("privacy")}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
+            >
+              <Ionicons name="lock-closed" size={15} color={colors.brand} />
+              <Text style={styles.sectionTitle}>Privacy options</Text>
+            </View>
+            <Ionicons
+              name={expanded === "privacy" ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={colors.onSurfaceSecondary}
+            />
+          </Pressable>
+          {expanded === "privacy" &&
+          (
             [
               { key: "show_online", label: "Show online status", icon: "radio-button-on" },
               { key: "show_age", label: "Show my age", icon: "calendar" },

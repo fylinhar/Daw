@@ -226,6 +226,7 @@ export default function Connect() {
                 size={56}
                 flagCode={countryToCode(item.country)}
                 online={item.is_online}
+                frameColor={item.active_frame?.color}
               />
               <View style={styles.cardBody}>
                 <View style={styles.cardTop}>
@@ -233,7 +234,7 @@ export default function Connect() {
                     {item.name}
                   </Text>
                   <GenderBadge gender={item.gender} size={11} />
-                  {item.is_vip && <VipBadge small />}
+                  {item.is_vip && <VipBadge small tier={item.vip_tier} />}
                 </View>
                 <LanguagePair
                   native={item.native_language}

@@ -185,6 +185,8 @@ export default function RoomScreen() {
           url={member.avatar_url}
           size={size}
           flagCode={countryToCode(member.country)}
+          frameColor={member.active_frame?.color}
+          isSpeaking={member.role !== "listener" && member.mic_on}
         />
         {(member.role === "host" || member.role === "speaker") && (
           <View
@@ -206,9 +208,22 @@ export default function RoomScreen() {
           </View>
         )}
       </View>
-      <Text style={styles.memberName} numberOfLines={1}>
-        {member.id === user?.id ? "You" : member.name.split(" ")[0]}
-      </Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 3,
+          maxWidth: size + 28,
+        }}
+      >
+        {member.active_badge?.emoji ? (
+          <Text style={{ fontSize: 10 }}>{member.active_badge.emoji}</Text>
+        ) : null}
+        <Text style={styles.memberName} numberOfLines={1}>
+          {member.id === user?.id ? "You" : member.name.split(" ")[0]}
+        </Text>
+        {member.is_vip ? <VipBadge small tier={member.vip_tier} /> : null}
+      </View>
       {isHost && member.id !== user?.id && (
         <View style={styles.hostActions}>
           <Pressable

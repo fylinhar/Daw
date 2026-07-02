@@ -104,7 +104,7 @@ export default function Follows() {
               <View style={styles.rowInfo}>
                 <View style={styles.nameRow}>
                   <Text style={styles.rowName}>{item.name}</Text>
-                  {item.is_vip && <VipBadge small />}
+                  {item.is_vip && <VipBadge small tier={item.vip_tier} />}
                 </View>
                 <LanguagePair
                   native={item.native_language}

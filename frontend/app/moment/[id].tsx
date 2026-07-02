@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/src/components/Avatar";
+import { VipBadge } from "@/src/components/Badges";
 import { countryToCode } from "@/src/constants/countries";
 import { useTheme } from "@/src/context/ThemeContext";
 import { fonts, radius, shadow, spacing, ThemeColors } from "@/src/theme";
@@ -33,6 +34,7 @@ export default function MomentDetail() {
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(
     null,
   );
+  const [showAuthorBar, setShowAuthorBar] = useState(false);
   const { colors } = useTheme();
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
@@ -99,7 +101,30 @@ export default function MomentDetail() {
         >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </Pressable>
-        <Text style={styles.headerTitle}>Moment</Text>
+        {showAuthorBar && moment?.author ? (
+          <Pressable
+            testID="moment-detail-header-author"
+            style={styles.headerAuthor}
+            onPress={() =>
+              moment.author?.id && router.push(`/user/${moment.author.id}`)
+            }
+          >
+            <Avatar
+              name={moment.author.name}
+              url={moment.author.avatar_url}
+              size={30}
+              frameColor={moment.author.active_frame?.color}
+            />
+            <Text style={styles.headerAuthorName} numberOfLines={1}>
+              {moment.author.name}
+            </Text>
+            {moment.author.is_vip ? (
+              <VipBadge small tier={moment.author.vip_tier} />
+            ) : null}
+          </Pressable>
+        ) : (
+          <Text style={styles.headerTitle}>Moment</Text>
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -115,6 +140,10 @@ export default function MomentDetail() {
             data={moment.comments || []}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
+            onScroll={(e) =>
+              setShowAuthorBar(e.nativeEvent.contentOffset.y > 56)
+            }
+            scrollEventThrottle={16}
             ListHeaderComponent={
               <View style={styles.momentCard}>
                 <View style={styles.authorRow}>
@@ -130,12 +159,20 @@ export default function MomentDetail() {
                     size={44}
                     flagCode={countryToCode(moment.author?.country)}
                     online={moment.author?.is_online}
+                    frameColor={moment.author?.active_frame?.color}
                   />
                 </Pressable>
                   <View>
-                    <Text style={styles.authorName}>
-                      {moment.author?.name}
-                    </Text>
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+                    >
+                      <Text style={styles.authorName}>
+                        {moment.author?.name}
+                      </Text>
+                      {moment.author?.is_vip ? (
+                        <VipBadge small tier={moment.author?.vip_tier} />
+                      ) : null}
+                    </View>
                     <Text style={styles.time}>{timeAgo(moment.created_at)}</Text>
                   </View>
                 </View>

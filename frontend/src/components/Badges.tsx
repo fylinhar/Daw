@@ -32,9 +32,18 @@ export const GenderBadge: React.FC<{
   );
 };
 
-/** Gold VIP pill shown next to VIP users' names. */
-export const VipBadge: React.FC<{ small?: boolean }> = ({ small }) => (
-  <View style={[styles.vipWrap, small && styles.vipWrapSmall]}>
+/** Gold (weekly/monthly) or purple (lifetime) VIP pill shown next to VIP users' names. */
+export const VipBadge: React.FC<{
+  small?: boolean;
+  tier?: "weekly" | "monthly" | "lifetime" | null;
+}> = ({ small, tier }) => (
+  <View
+    style={[
+      styles.vipWrap,
+      small && styles.vipWrapSmall,
+      tier === "lifetime" && { backgroundColor: "#8B5CF6" },
+    ]}
+  >
     <Text style={[styles.vipText, small && styles.vipTextSmall]}>VIP</Text>
   </View>
 );

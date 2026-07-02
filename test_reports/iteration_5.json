@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration-5 (Market + collapsing moment header + privacy accordion + avatar frame/speaking rings) fully verified. BACKEND: 8/8 new pytest tests in /app/backend/tests/test_iteration5_market.py all green — GET /api/market returns 1000 coins + 11-item catalog (vip_weekly/monthly/lifetime, badge_star/fire/crown/heart, frame_gold/blue/pink/green) with correct 'active' flags, prices, colors and duration_days. POST /api/market/buy for vip_weekly deducts 150 coins, sets is_vip=true + vip_tier='weekly' (verified via /auth/me & /users/{id} viewed by another user), badge_star sets active_badge{id, emoji='⭐'}, frame_gold sets active_frame{id, color='#F59E0B'}, unknown item → 404, insufficient coins for vip_lifetime (fresh user 1000 < 2000) → 400. Legacy suites: 53 pre-existing pytest cases pass; 3 unrelated pre-existing failures (learning_languages truncate expectation and 'profile_views' field removed from user_public — both from iteration-3/4 tests, unrelated to iteration-5). FRONTEND (mobile 390x844): (a) Market tab renders — wallet shows 1000 → 850 (vip_weekly bought) → 750 (badge_star bought) → 600 (frame_gold bought); all three items flip to 'Active' pill; entire 11-item catalog rendered in three sections VIP/Name Badges/Avatar Rings with correct prices & emojis. (b) Profile tab: gold avatar ring visually rendered (frame_gold from purchase); VIP status banner (testID vip-status-banner) present; NEW collapse-privacy accordion PERFECT — collapsed by default (0 privacy toggles visible), tap expands revealing 5 toggles (privacy-show_online/age/gender/country/interests), toggle-online works, re-tap collapses (0 toggles). (c) Moment detail collapsing header — created a scrollable moment (bac90f43…, 20 comments) → opened detail: initial header shows 'Moment' title (author-bar count=0), after mouse-wheel scroll (~15 ticks) the header replaces with author bar (testID moment-detail-header-author count=1 showing Demo User avatar + VIP badge + name), scrolling BACK to top restores 'Moment' title (author-bar back to 0). Screenshot confirmed. (d) Voice room: created 'TEST ring room' via room-create-fab + room-lang-en + 'Go Live'; host member card rendered with mic badge (green) and speaking ring visually present around avatar (Avatar.tsx isSpeaking→#22C55E border verified). testID '-ring' not exposed on room member Avatars (Avatar in room/[id].tsx line 183 has no testID prop). (e) Regression: login (demo@demo.com/Demo1234!), connect list (8 partner cards + VIP badge on Amélie), moments feed (17 cards + notifications bell), voice tab all working. No red screens. Only carry-over warning: props.pointerEvents deprecation (RN Web).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "Multiple screens (Pressable/View)", "issue": "Carry-over from iter 1–4: RN Web still logs 'props.pointerEvents is deprecated. Use style.pointerEvents' — Avatar.tsx line 92 uses pointerEvents=\"none\" as a prop. Reference: /app/frontend/src/components/Avatar.tsx:92 (migrate to style={{ pointerEvents: 'none' }})."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration5_market.py",
+    "/app/test_reports/pytest/iteration5.xml"
+  ],
+  "action_items": [
+    "(LOW / testability gap) Add a testID prop to the Avatar rendered inside /app/frontend/app/room/[id].tsx renderMember (line 183) so that the -ring testID hook fires. E.g. testID={`room-member-avatar-${member.id}`}. Same suggestion for the Profile screen's own avatar so E2E can assert the frame ring via [data-testid$='-ring']. Ring renders correctly VISUALLY today; this is purely to make it testable via Playwright.",
+    "(LOW carry-over) Migrate Avatar.tsx line 92 pointerEvents=\"none\" prop to style={{ pointerEvents: 'none' }} to clear the RN Web deprecation warning on every screen load.",
+    "(HYGIENE) Clean up the 'TEST scrollable moment iter5' moment (id bac90f43-fb68-437e-9c3e-bab638ecb0ed) with 20 auto-comments + one 'TEST ring room' voice room created during this run, plus ~3 TEST_market_* users registered by the pytest suite.",
+    "(PRE-EXISTING, not iteration-5) 3 legacy pytest failures unrelated to this iteration: (1) test_iteration3_features.py::TestProfileUpdate::test_update_language_lists_interests_age expects learning_languages=['es'] but backend truncates to [] for non-VIP demo state; (2)+(3) test_new_features.py profile_views tests — field removed from user_public (models.py). Main agent should either revive profile_views or drop those legacy tests."
+  ],
+  "critical_code_review_comments": [
+    "backend/routes/market.py is clean, idempotent, and DRY — CATALOG static + ITEM_MAP for O(1) lookup, single 'active' formula using expires_at ISO comparison. Not enough coins → 400, unknown item → 404, both properly modeled. ✔",
+    "models.py user_public + user_card correctly re-derive is_vip via _vip_active (checks expiry) rather than trusting stored flag — so a lapsed vip_expires_at will silently flip is_vip to false at read time. ✔",
+    "Avatar.tsx isSpeaking (#22C55E) correctly takes priority over frameColor at line 79 — a speaking host with a purchased frame will show green not gold, matching the spec. ✔",
+    "moment/[id].tsx onScroll threshold 56px + setShowAuthorBar via scrollEventThrottle=16 gives a snappy transition with no flicker. Nice touch calling router.push(/user/{id}) from the header author. ✔",
+    "profile.tsx 'expanded' state singleton means opening Privacy auto-closes any open language section (native/teach/learning). Consider preserving multiple open sections if UX regresses — but current single-open behaviour matches HelloTalk. Note: file is now ~1000 lines — carry-over recommendation to extract PrivacyToggles + LanguageEditor subcomponents.",
+    "room/[id].tsx renderMember Avatar (line 183) is missing testID — see action_items."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration5_market.py (NEW — 8 tests covering Market catalog + buy flows for VIP/badge/frame + insufficient/unknown + user_card carry-over)",
+    "/app/test_reports/pytest/iteration5.xml (NEW — pytest JUnit)",
+    "/app/test_reports/iteration_5.json (this report)"
+  ],
+  "success_rate": {
+    "backend": "100% on iteration-5 (8/8). Legacy 3 pre-existing failures unrelated to Market/moment/profile/room updates.",
+    "frontend": "100% on all iteration-5 flows: Market buy for all 3 item types, wallet delta correct (1000→600), Active pills, Profile privacy accordion (collapse+expand+toggle+re-collapse), moment detail collapsing header (both directions), voice room host card with speaking ring (visually), regression login/connect/moments/voice tabs."
+  },
+  "seed_data_creation": "1 'TEST scrollable moment iter5' moment (id bac90f43-fb68-437e-9c3e-bab638ecb0ed) + 20 auto comments on demo's feed; 1 'TEST ring room' voice room (ended); ~3 TEST_market_* pytest users. Demo user coins reduced from 1000 → 600 (bought vip_weekly, badge_star, frame_gold — main agent may seed-reset if needed).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Env var is EXPO_PUBLIC_BACKEND_URL (not EXPO_BACKEND_URL). /api/auth/register returns 201 (not 200) — accept both. Demo user starts iteration-5 with 1000 coins & is_vip=true but vip_tier=null (seed sets is_vip without tier); buying vip_weekly sets tier=weekly. Market items testIDs: market-buy-<id> (Pressable) or market-active-<id> (green pill) — mutually exclusive per row. Wallet testID: wallet-balance (contains coin emoji + number, so parse via inner_text). Moment detail collapsing header only fires past scrollY>56 — small moments with 0-1 comments will NOT trigger it; inject ≥15 comments to make FlatList scrollable. RN FlatList on Web is scrollable via mouse.wheel over its viewport, NOT via JS scrollTop on divs (VirtualizedList uses transforms). Room create modal confirm button is text 'Go Live' (not room-create-confirm-btn). Avatar '-ring' testID is only exposed when parent Avatar has testID prop — profile/room avatars currently omit testID so E2E can't assert ring via selector.",
+  "rca_of_issue": "No bugs in iteration-5 code. All 4 new features (market VIP/badge/frame catalog+buy, collapsing moment header, privacy accordion, avatar rings + speaking ring) work end-to-end. Two minor carry-over LOW items (pointerEvents deprecation + missing testIDs on room/profile Avatars) documented for main agent."
+}

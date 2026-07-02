@@ -59,6 +59,10 @@ export interface User {
   interests?: string[];
   gender?: "male" | "female" | null;
   is_vip?: boolean;
+  vip_tier?: "weekly" | "monthly" | "lifetime" | null;
+  active_badge?: { id: string; emoji: string; expires_at?: string | null } | null;
+  active_frame?: { id: string; color: string; expires_at?: string | null } | null;
+  coins?: number;
   privacy?: Record<string, boolean>;
   is_online?: boolean;
   followers_count?: number;
@@ -98,11 +102,34 @@ export interface Moment {
   id: string;
   author: User | null;
   text: string;
+  image_url?: string | null;
   like_count: number;
   liked_by_me: boolean;
   comment_count: number;
   created_at: string;
   comments?: MomentComment[];
+}
+
+export interface MarketItem {
+  id: string;
+  type: "vip" | "badge" | "frame";
+  name: string;
+  emoji: string;
+  price: number;
+  duration_days: number | null;
+  color?: string;
+  desc: string;
+  active: boolean;
+}
+
+export interface AppNotification {
+  id: string;
+  type: "like" | "comment" | "reply";
+  moment_id: string | null;
+  text: string | null;
+  read: boolean;
+  created_at: string;
+  actor: User | null;
 }
 
 export interface MomentComment {
