@@ -91,3 +91,8 @@
 ✅ ADMIN DASHBOARD: secret web URL /admin-x7k2p9, admin@lingua.app/Admin1234! (seeded idempotently at startup); stats, user mgmt (ban→login 403, restrict→post/send 403, VIP grant/revoke, set coins, delete), market price overrides+disable (market_config col), moments moderation, app limits config (app_config col, applied live)
 ✅ Keyboard UX: react-native-keyboard-controller 1.18.5, KeyboardProvider at root, KAV swapped in chat/moment/room ("translate-with-padding") + auth/onboarding/moments-composer/voice
 ✅ Tests: iteration 5/6 reports pass; iteration 7 pytest 20/20 (tests/test_iteration7_features.py)
+
+## Iteration 8 (tested & passing — iteration_8.json)
+✅ Chats list: VIP badge + active badge emoji next to names, frame rings; live voice-room status (purple mic badge on avatar + "🎙️ In voice room · name" line, GET /chats attaches partner.in_voice_room from live rooms members dict)
+✅ /search revamped: language filters removed → funnel filter icon toggles panel (age presets 18-25/26-35/36+, location country/city input, gender, online, reset + count badge); backend /users/partners min_age/max_age/location params
+✅ Profile "About" (About me/Country/Age/Gender/Interests) = one collapsible card (collapse-about), auto-expands in edit mode
