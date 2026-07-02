@@ -10,7 +10,11 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.communityspeak.z97eev"
+      "bundleIdentifier": "com.emergent.communityspeak.z97eev",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Share photos from your gallery in chat",
+        "NSMicrophoneUsageDescription": "Record voice messages and join voice rooms"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +22,8 @@
         "backgroundColor": "#000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.emergent.communityspeak.z97eev"
+      "package": "com.emergent.communityspeak.z97eev",
+      "permissions": ["READ_MEDIA_IMAGES", "RECORD_AUDIO"]
     },
     "web": {
       "bundler": "metro",

@@ -7,6 +7,8 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -14,6 +16,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -31,7 +34,7 @@ import { useCall } from "@/src/context/CallContext";
 import { useTheme } from "@/src/context/ThemeContext";
 import { useChatSocket } from "@/src/hooks/use-chat-socket";
 import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
-import { api, Conversation, Message } from "@/src/utils/api";
+import { api, Conversation, Message, mediaUrl } from "@/src/utils/api";
 import { clockTime } from "@/src/utils/time";
 
 interface Correction {
@@ -58,6 +61,7 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [uploadingVoice, setUploadingVoice] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
@@ -185,6 +189,48 @@ export default function ChatScreen() {
     }
   };
 
+  const pickImage = async () => {
+    const current = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (!current.granted) {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        if (!perm.canAskAgain) {
+          Alert.alert(
+            "Photos",
+            "Photo access is disabled. Enable it in Settings to share photos.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          Alert.alert("Photos", "Photo access is needed to share images in chat.");
+        }
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.6,
+      base64: true,
+    });
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset?.base64) return;
+    setUploadingImage(true);
+    try {
+      const msg = await api.post<Message>(`/chats/${id}/image`, {
+        image_base64: asset.base64,
+        mime: asset.mimeType || "image/jpeg",
+      });
+      setMessages((prev) => [...prev, msg]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Photo", "Could not send the photo. Try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const translate = async (msg: Message) => {
     if (translations[msg.id]) {
       setTranslations((prev) => {
@@ -287,6 +333,7 @@ export default function ChatScreen() {
               const mine = item.sender_id === user?.id;
               const translated = translations[item.id];
               const isVoice = item.type === "voice" && item.audio_id;
+              const isImage = item.type === "image" && item.image_id;
               return (
                 <View
                   style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}
@@ -300,6 +347,14 @@ export default function ChatScreen() {
                         audioId={item.audio_id!}
                         durationMs={item.duration_ms}
                         mine={mine}
+                      />
+                    ) : isImage ? (
+                      <Image
+                        testID={`image-bubble-${item.id}`}
+                        source={{ uri: mediaUrl(item.image_id!) }}
+                        style={styles.imageBubble}
+                        contentFit="cover"
+                        transition={150}
                       />
                     ) : (
                       <Text
@@ -326,7 +381,7 @@ export default function ChatScreen() {
                       >
                         {clockTime(item.created_at)}
                       </Text>
-                      {!mine && !isVoice && (
+                      {!mine && !isVoice && !isImage && (
                         <Pressable
                           testID={`translate-btn-${item.id}`}
                           onPress={() => translate(item)}
@@ -408,6 +463,18 @@ export default function ChatScreen() {
           </View>
         ) : (
           <View style={styles.inputRow}>
+            <Pressable
+              testID="chat-media-btn"
+              onPress={pickImage}
+              style={[styles.toolBtn, uploadingImage && { opacity: 0.4 }]}
+              disabled={uploadingImage}
+            >
+              {uploadingImage ? (
+                <ActivityIndicator size="small" color={colors.brand} />
+              ) : (
+                <Ionicons name="image-outline" size={20} color={colors.brand} />
+              )}
+            </Pressable>
             <Pressable
               testID="grammar-check-btn"
               onPress={checkGrammar}
@@ -554,6 +621,12 @@ const makeStyles = (colors: ThemeColors) =>
     },
     bubbleTextMine: {
       color: colors.onBrand,
+    },
+    imageBubble: {
+      width: 210,
+      height: 210,
+      borderRadius: radius.sm,
+      backgroundColor: colors.surfaceTertiary,
     },
     translationBox: {
       borderTopWidth: StyleSheet.hairlineWidth,

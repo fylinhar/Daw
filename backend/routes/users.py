@@ -1,7 +1,10 @@
+import uuid
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
-from db import users_col
+from db import profile_visits_col, users_col
 from models import UserUpdate, user_card, user_public
 from ws_manager import manager
 
@@ -15,6 +18,27 @@ async def update_me(body: UserUpdate, current_user: CurrentUser):
         await users_col.update_one({"_id": current_user["_id"]}, {"$set": updates})
         current_user.update(updates)
     return user_public(current_user)
+
+
+@router.get("/me/visitors")
+async def my_visitors(current_user: CurrentUser):
+    """Who visited my profile, most recent first (unique visitors)."""
+    docs = (
+        await profile_visits_col.find({"visited_user_id": current_user["_id"]})
+        .sort("visited_at", -1)
+        .to_list(100)
+    )
+    visitor_ids = [d["visitor_id"] for d in docs]
+    users = await users_col.find({"_id": {"$in": visitor_ids}}).to_list(200)
+    umap = {u["_id"]: u for u in users}
+    visitors = []
+    for d in docs:
+        u = umap.get(d["visitor_id"])
+        if u:
+            card = user_card(u)
+            card["visited_at"] = d["visited_at"]
+            visitors.append(card)
+    return {"count": len(visitors), "visitors": visitors}
 
 
 @router.get("/partners")
@@ -58,7 +82,19 @@ async def get_user(user_id: str, current_user: CurrentUser):
     doc = await users_col.find_one({"_id": user_id})
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
+    if user_id != current_user["_id"]:
+        await profile_visits_col.update_one(
+            {"visitor_id": current_user["_id"], "visited_user_id": user_id},
+            {
+                "$set": {"visited_at": datetime.now(timezone.utc).isoformat()},
+                "$setOnInsert": {"_id": str(uuid.uuid4())},
+            },
+            upsert=True,
+        )
     public = user_public(doc)
     public.pop("email", None)
     public["is_online"] = manager.is_online(user_id)
+    public["profile_views"] = await profile_visits_col.count_documents(
+        {"visited_user_id": user_id}
+    )
     return public

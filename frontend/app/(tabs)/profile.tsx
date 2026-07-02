@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import dayjs from "dayjs";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -40,8 +41,26 @@ export default function Profile() {
   );
   const [proficiency, setProficiency] = useState(user?.proficiency || null);
   const [saving, setSaving] = useState(false);
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .get<{ count: number }>("/users/me/visitors")
+        .then((d) => setVisitorCount(d.count))
+        .catch(() => {});
+      api
+        .get<User>("/auth/me")
+        .then(setUser)
+        .catch(() => {});
+    }, [setUser]),
+  );
 
   if (!user) return null;
+
+  const daysMember = user.created_at
+    ? Math.max(1, dayjs().diff(dayjs(user.created_at), "day") + 1)
+    : 1;
 
   const save = async () => {
     setSaving(true);
@@ -112,9 +131,60 @@ export default function Profile() {
               {langName(user.learning_language)} · {user.proficiency}
             </Text>
           )}
+          <View style={styles.statsRow}>
+            <View style={styles.statCell} testID="profile-streak-stat">
+              <View style={styles.statValueRow}>
+                <Ionicons name="flame" size={16} color={colors.warning} />
+                <Text style={styles.statValue}>{user.streak_count ?? 0}</Text>
+              </View>
+              <Text style={styles.statLabel}>Day Streak</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <Pressable
+              testID="profile-views-stat"
+              style={styles.statCell}
+              onPress={() => router.push("/visitors")}
+            >
+              <View style={styles.statValueRow}>
+                <Ionicons name="eye" size={16} color={colors.brand} />
+                <Text style={styles.statValue}>{visitorCount ?? 0}</Text>
+              </View>
+              <Text style={styles.statLabel}>Profile Views</Text>
+            </Pressable>
+            <View style={styles.statDivider} />
+            <View style={styles.statCell} testID="profile-days-stat">
+              <View style={styles.statValueRow}>
+                <Ionicons name="calendar" size={16} color={colors.success} />
+                <Text style={styles.statValue}>{daysMember}</Text>
+              </View>
+              <Text style={styles.statLabel}>Days Member</Text>
+            </View>
+          </View>
         </View>
 
         <Text style={styles.groupLabel}>Profile details</Text>
+        <View style={styles.section}>
+          <Pressable
+            testID="profile-views-row"
+            style={styles.settingRow}
+            onPress={() => router.push("/visitors")}
+          >
+            <View style={styles.settingIcon}>
+              <Ionicons name="eye" size={18} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingTitle}>Profile Views</Text>
+              <Text style={styles.settingSub}>
+                {visitorCount ?? 0} {visitorCount === 1 ? "person" : "people"} visited your profile
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.onSurfaceSecondary}
+            />
+          </Pressable>
+        </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About me</Text>
           {editing ? (
@@ -336,6 +406,40 @@ const makeStyles = (colors: ThemeColors) =>
       fontFamily: fonts.textSemi,
       fontSize: 13,
       color: colors.onSurfaceSecondary,
+    },
+    statsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "stretch",
+      marginTop: spacing.sm,
+      paddingTop: spacing.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.divider,
+    },
+    statCell: {
+      flex: 1,
+      alignItems: "center",
+      gap: 2,
+    },
+    statValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    statValue: {
+      fontFamily: fonts.display,
+      fontSize: 18,
+      color: colors.onSurface,
+    },
+    statLabel: {
+      fontFamily: fonts.textSemi,
+      fontSize: 11,
+      color: colors.onSurfaceSecondary,
+    },
+    statDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 32,
+      backgroundColor: colors.borderStrong,
     },
     groupLabel: {
       fontFamily: fonts.textBold,

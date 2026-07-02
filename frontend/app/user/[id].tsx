@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import dayjs from "dayjs";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -72,6 +73,35 @@ export default function UserProfile() {
                 </Text>
               </View>
             )}
+            <View style={styles.statsRow}>
+              <View style={styles.statCell} testID="user-streak-stat">
+                <View style={styles.statValueRow}>
+                  <Ionicons name="flame" size={16} color={colors.warning} />
+                  <Text style={styles.statValue}>{profile.streak_count ?? 0}</Text>
+                </View>
+                <Text style={styles.statLabel}>Day Streak</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statCell} testID="user-views-stat">
+                <View style={styles.statValueRow}>
+                  <Ionicons name="eye" size={16} color={colors.brand} />
+                  <Text style={styles.statValue}>{profile.profile_views ?? 0}</Text>
+                </View>
+                <Text style={styles.statLabel}>Profile Views</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statCell} testID="user-days-stat">
+                <View style={styles.statValueRow}>
+                  <Ionicons name="calendar" size={16} color={colors.success} />
+                  <Text style={styles.statValue}>
+                    {profile.created_at
+                      ? Math.max(1, dayjs().diff(dayjs(profile.created_at), "day") + 1)
+                      : 1}
+                  </Text>
+                </View>
+                <Text style={styles.statLabel}>Days Member</Text>
+              </View>
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -150,6 +180,40 @@ const makeStyles = (colors: ThemeColors) =>
     fontFamily: fonts.textSemi,
     fontSize: 13,
     color: colors.onSurfaceTertiary,
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "stretch",
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.divider,
+  },
+  statCell: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  statValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statValue: {
+    fontFamily: fonts.display,
+    fontSize: 18,
+    color: colors.onSurface,
+  },
+  statLabel: {
+    fontFamily: fonts.textSemi,
+    fontSize: 11,
+    color: colors.onSurfaceSecondary,
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 32,
+    backgroundColor: colors.borderStrong,
   },
   section: {
     backgroundColor: colors.surface,

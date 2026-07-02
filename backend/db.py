@@ -18,6 +18,8 @@ comments_col = db["comments"]
 rooms_col = db["rooms"]
 room_messages_col = db["room_messages"]
 audio_col = db["audio_files"]
+media_col = db["media_files"]
+profile_visits_col = db["profile_visits"]
 
 
 async def ensure_indexes():
@@ -28,3 +30,7 @@ async def ensure_indexes():
     await comments_col.create_index([("moment_id", 1), ("created_at", 1)])
     await rooms_col.create_index([("is_live", 1), ("created_at", -1)])
     await room_messages_col.create_index([("room_id", 1), ("created_at", 1)])
+    await profile_visits_col.create_index(
+        [("visitor_id", 1), ("visited_user_id", 1)], unique=True
+    )
+    await profile_visits_col.create_index([("visited_user_id", 1), ("visited_at", -1)])

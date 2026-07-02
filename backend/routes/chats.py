@@ -5,8 +5,14 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from auth_utils import CurrentUser
-from db import audio_col, conversations_col, messages_col, users_col
-from models import ConversationCreate, MessageCreate, VoiceMessageCreate, user_card
+from db import audio_col, conversations_col, media_col, messages_col, users_col
+from models import (
+    ConversationCreate,
+    ImageMessageCreate,
+    MessageCreate,
+    VoiceMessageCreate,
+    user_card,
+)
 from ws_manager import manager
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -20,6 +26,7 @@ def message_public(doc: dict) -> dict:
         "text": doc["text"],
         "type": doc.get("type", "text"),
         "audio_id": doc.get("audio_id"),
+        "image_id": doc.get("image_id"),
         "duration_ms": doc.get("duration_ms"),
         "created_at": doc["created_at"],
     }
@@ -164,6 +171,54 @@ async def send_voice_message(
         {
             "$set": {
                 "last_message": {"text": "🎤 Voice message", "sender_id": current_user["_id"], "created_at": now},
+                "updated_at": now,
+            },
+            "$inc": {f"unread.{partner_id}": 1},
+        },
+    )
+    await manager.send_to_user(
+        partner_id,
+        {
+            "type": "new_message",
+            "conversation_id": conversation_id,
+            "message": msg,
+            "sender": user_card(current_user),
+        },
+    )
+    return msg
+
+
+@router.post("/{conversation_id}/image", status_code=201)
+async def send_image_message(
+    conversation_id: str, body: ImageMessageCreate, current_user: CurrentUser
+):
+    conv = await get_owned_conversation(conversation_id, current_user["_id"])
+    partner_id = next(p for p in conv["participant_ids"] if p != current_user["_id"])
+    try:
+        image_bytes = base64.b64decode(body.image_base64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image data")
+    if len(image_bytes) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image too large (max 8MB)")
+    media_id = str(uuid.uuid4())
+    await media_col.insert_one({"_id": media_id, "data": image_bytes, "mime": body.mime})
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "_id": str(uuid.uuid4()),
+        "conversation_id": conversation_id,
+        "sender_id": current_user["_id"],
+        "text": "Photo",
+        "type": "image",
+        "image_id": media_id,
+        "created_at": now,
+    }
+    await messages_col.insert_one(doc)
+    msg = message_public(doc)
+    await conversations_col.update_one(
+        {"_id": conversation_id},
+        {
+            "$set": {
+                "last_message": {"text": "📷 Photo", "sender_id": current_user["_id"], "created_at": now},
                 "updated_at": now,
             },
             "$inc": {f"unread.{partner_id}": 1},

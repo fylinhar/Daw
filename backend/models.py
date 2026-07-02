@@ -56,6 +56,11 @@ class VoiceMessageCreate(BaseModel):
     duration_ms: int = 0
 
 
+class ImageMessageCreate(BaseModel):
+    image_base64: str = Field(min_length=1)
+    mime: str = "image/jpeg"
+
+
 class RoomCreate(BaseModel):
     title: str = Field(min_length=1, max_length=80)
     language: str = Field(min_length=2, max_length=8)
@@ -81,6 +86,7 @@ def user_public(doc: dict) -> dict:
         "native_language": doc.get("native_language"),
         "learning_language": doc.get("learning_language"),
         "proficiency": doc.get("proficiency"),
+        "streak_count": doc.get("streak_count", 0),
         "created_at": doc.get("created_at"),
     }
 

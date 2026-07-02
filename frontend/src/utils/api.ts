@@ -54,6 +54,13 @@ export interface User {
   learning_language?: string | null;
   proficiency?: string | null;
   is_online?: boolean;
+  streak_count?: number;
+  profile_views?: number;
+  created_at?: string | null;
+}
+
+export interface Visitor extends User {
+  visited_at: string;
 }
 
 export interface Message {
@@ -61,8 +68,9 @@ export interface Message {
   conversation_id: string;
   sender_id: string;
   text: string;
-  type?: "text" | "voice";
+  type?: "text" | "voice" | "image";
   audio_id?: string | null;
+  image_id?: string | null;
   duration_ms?: number | null;
   created_at: string;
 }
@@ -120,3 +128,6 @@ export interface RoomMessage {
 
 export const audioUrl = (audioId: string): string =>
   `${API_URL}/api/audio/${audioId}`;
+
+export const mediaUrl = (mediaId: string): string =>
+  `${API_URL}/api/media/${mediaId}`;

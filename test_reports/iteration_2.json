@@ -1,0 +1,49 @@
+{
+  "summary": "LinguaConnect new-features (streak / profile visitors / stats-bar / image chat) tested end-to-end. Backend: 7/7 new pytest tests pass in /app/backend/tests/test_new_features.py (login returns streak_count+created_at, /auth/me returns streak, GET /users/{id} by another user records visit + dedupes + excludes self-visit + returns profile_views, /users/me/visitors returns {count, visitors[]} sorted desc, POST /chats/{id}/image + GET /media/{id} + conversation last_message='📷 Photo'). Existing test_api.py: 8/8 pass. WS tests (2) fail with 'async def not natively supported' — missing pytest-asyncio plugin in this forked env (pre-existing, not new-features related; main agent already curl-verified WS). Frontend (Expo web, mobile viewport 390x800, demo@demo.com login via UI): Me tab → profile-screen visible; profile-streak-stat / profile-views-stat / profile-days-stat / profile-views-row all render with values '1 Day Streak · 0 Profile Views · 23 Days Member'. Tapping profile-views-stat pushes /visitors → visitors-screen shows 1 row (visitor-row-<mei-id>, name 'Mei Lin', 'a few seconds ago'). Tapping row opens user-profile-screen with user-streak-stat/user-views-stat=1/user-days-stat (values '1 · 1 · 31'). Chat screen (opened via /chat/{id}): chat-screen + chat-media-btn (new image button) + grammar-check-btn + chat-message-input + chat-record-btn + chat-back-btn all present in correct order; text-send regression works ('playwright regression msg' delivered). RN deprecation warning still present: 'props.pointerEvents is deprecated' (carried over from previous iteration, not a new-features regression).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "profile-views-stat count (own profile card)", "issue": "On hard reload / direct deep-link to /profile the count shows 0 even though /users/me/visitors returns count=1 in the visitors screen a moment later. Root cause: /users/me/visitors is fired inside useFocusEffect BEFORE AuthContext finishes hydrating the token from AsyncStorage on cold-load, so the request returns 401 and setVisitorCount is never called. Reference: /app/frontend/app/(tabs)/profile.tsx:47-56 (also observable as two '401' entries in browser console). Not reproducible during normal in-app navigation.", "testID": "profile-views-stat", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Deep-link auth hydration race", "issue": "When a screen is opened via a hard-reloaded URL (page.goto for /profile, /chat/{id}) the first API call fires before the JWT is attached to the axios client → 401 → screen shows empty/default state ('Say hello to !' on chat, 0 profile views on profile). A tiny wait-until-token-ready guard in AuthContext or an axios interceptor that queues requests until the token is set would fix this. Only impacts deep-links / hard refreshes; normal tab navigation is fine.", "affected_testIDs": ["profile-views-stat", "chat-screen"]}
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "Multiple screens", "issue": "Console still logs 'props.pointerEvents is deprecated. Use style.pointerEvents' on every screen load (pre-existing from iteration 1, still not addressed)."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/test_api.py",
+    "/app/test_reports/pytest/new_features.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(LOW) Fix auth-hydration race so API requests wait until the JWT is attached — either await AsyncStorage in AuthProvider before rendering children, or make the axios client read the current token per-request rather than at boot. Fixes the '0 Profile Views on own card after deep-link' cosmetic bug and the momentary 'Not authenticated' toast on /chat/{id} deep-links.",
+    "(carry-over) Migrate remaining props.pointerEvents=... usages to style={{ pointerEvents: '...' }} to clear the RN deprecation warning.",
+    "(env) pip install pytest-asyncio in the forked container so /app/backend/tests/test_websocket.py runs again — this was working in iteration 1 before the env fork.",
+    "(nit) Optional: add testID on the (tabs)/_layout Tabs.Screen tabBarButtonTestID so 'Me/Chats' tab taps are targetable without get_by_role (currently role='button' does not match the tab bar Pressables on web; testing agents must use direct URL nav)."
+  ],
+  "critical_code_review_comments": [
+    "routes/users.py:80-100 (get_user) correctly excludes self-visit and upserts on (visitor_id, visited_user_id) with $setOnInsert _id — dedupe verified. `email` is popped from the response for non-self views ✔.",
+    "routes/chats.py:191-236 (send_image_message) mirrors the voice-message shape well; 8MB base64 cap + partner WS event + last_message='📷 Photo' all correct. Note: `base64.b64decode` is lenient (validate=False), so garbage strings are silently accepted (test showed 201 for '!!!not-base64!!!'). Consider validate=True or a small header sniff.",
+    "routes/media.py:8-17 has no auth check — image_id is a UUID so obscurity is the only barrier. For a language-partner chat this is likely fine, but flag it as 'security via unguessable URL' rather than proper access control.",
+    "frontend/app/(tabs)/profile.tsx duplicates the /users/me/visitors count fetch in both useFocusEffect and via the visitors screen. Consolidate through a small hook to avoid stale counts and simplify."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py (new — 7 tests covering streak / visitors / image messages / media serving)"
+  ],
+  "success_rate": {
+    "backend": "100% on new features (7/7 pytest); 8/8 on legacy API tests; 2 WS tests fail due to missing pytest-asyncio (env, not code)",
+    "frontend": "100% on all targeted flows (profile stats bar, profile-views-row → visitors screen, visitor-row tap → user-profile stats row, chat-media-btn presence, text-send regression). One minor deep-link auth-race UX bug noted."
+  },
+  "seed_data_creation": "Used existing seed users. Created 1 profile visit (mei → demo) and 1 image message + text message in the demo↔mei conversation during testing.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "New feature testIDs: profile-streak-stat / profile-views-stat / profile-days-stat / profile-views-row / visitors-screen / visitor-row-{id} / visitors-back-btn / user-streak-stat / user-views-stat / user-days-stat / chat-media-btn / image-bubble-{id}. The (tabs) bar Pressables are NOT get_by_role('button', name='Me') targetable on web — use direct expo-router URL nav ('/profile','/chats','/chat/{id}','/visitors','/user/{id}'). If you deep-link into /chat/{id} or /profile via page.goto AFTER login, expect a first-request 401 due to the auth-hydration race — add a page.wait_for_timeout(2500) then a soft-reload OR simply click through from the Connect tab. To generate a profile visit for demo, login mei via API and GET /api/users/{demo_id}. Backend WS tests need `pip install pytest-asyncio` in this env.",
+  "rca_of_issue": "profile-views-stat shows 0 on cold-load of /profile: /users/me/visitors is called inside useFocusEffect before AuthContext has awaited AsyncStorage.getItem for the token, so the request goes out without an Authorization header and returns 401; the catch handler swallows it, leaving visitorCount at its initial null → rendered as 0. Reproduce: hard-reload the app on the /profile URL. Mitigation: (a) gate the entire (tabs) layout render on `authLoaded === true`, or (b) resolve the token synchronously into the axios default headers in AuthProvider before first render."
+}
