@@ -28,7 +28,7 @@ export const LanguagePair: React.FC<LanguagePairProps> = ({
   const learnList = (
     Array.isArray(learning) ? learning : learning ? [learning] : []
   ).filter(Boolean) as string[];
-  const flagSize = compact ? 11 : 14;
+  const flagSize = compact ? 9 : 14;
 
   return (
     <View style={[styles.row, compact && styles.rowCompact]}>
@@ -84,7 +84,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     rowCompact: {
       flexWrap: "nowrap",
-      gap: 3,
+      gap: 2,
     },
     chip: {
       flexDirection: "row",
@@ -95,9 +95,9 @@ const makeStyles = (colors: ThemeColors) =>
       borderRadius: radius.pill,
     },
     chipCompact: {
-      gap: 3,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      gap: 2,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
     },
     nativeChip: {
       backgroundColor: colors.brandTertiary,
@@ -111,7 +111,7 @@ const makeStyles = (colors: ThemeColors) =>
       color: colors.onBrandTertiary,
     },
     chipTextCompact: {
-      fontSize: 10,
+      fontSize: 9,
     },
     learningText: {
       color: colors.onSurfaceSecondary,

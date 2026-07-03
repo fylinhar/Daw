@@ -105,3 +105,10 @@
 ✅ Voice room mesh on same WebRTC stack: per-peer ICE buffering, auto re-offer on 'failed', native-capable, E2E pass (host+listener, mic toggle, hand raise, leave/end)
 ⚠️ ws@8 pinned as devDependency (react-native-webrtc install caused ws@7 hoist → expo 'WebSocketServer is not a constructor' crash)
 ✅ Admin URL for user: /admin-x7k2p9 (admin@lingua.app / Admin1234!)
+
+## Iteration 12 (this session — manually e2e verified via playwright)
+✅ AI Grammar Correction in chat: pencil icon on every text bubble (mine+theirs) → /ai/correct → green "Corrected" box (corrected text + italic explanation, "✓ No mistakes found" if identical); sparkles AI-fix button next to send corrects the draft in-place + draft-hint-bar shows explanation 6s
+✅ Voice message bug fix: startRecording had silent failures (RN-web Alert no-op + unhandled errors). Now: getRecordingPermissions→request flow, canAskAgain→Open Settings redirect, try/catch with cross-platform notify(); all chat error alerts (voice/photo/translate/correct) use notify()
+✅ Incoming call ringtone + vibration: /app/frontend/assets/sounds/ringtone.wav (generated double-beep), expo-audio useAudioPlayer looped + Vibration.vibrate([600,1000],true) while call.status==="incoming" in CallContext
+✅ Connect page language chips shrunk (compact: flag 9, font 9, padding 4/1, gap 2) in LanguagePair.tsx
+Note: Daily streak (backend touch_streak + profile/user page display) already existed from iteration 2.

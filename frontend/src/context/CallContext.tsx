@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useAudioPlayer } from "expo-audio";
 import { LinearGradient } from "expo-linear-gradient";
 import React, {
   createContext,
@@ -15,6 +16,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  Vibration,
   View,
 } from "react-native";
 import Animated, {
@@ -373,6 +375,31 @@ export const CallProvider: React.FC<{ children: React.ReactNode }> = ({
     if (call?.status !== "active") return;
     const t = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(t);
+  }, [call?.status]);
+
+  // Ringtone + vibration while an incoming call is ringing.
+  const ringtone = useAudioPlayer(require("../../assets/sounds/ringtone.wav"));
+  useEffect(() => {
+    if (call?.status !== "incoming") return;
+    try {
+      ringtone.loop = true;
+      ringtone.seekTo(0);
+      ringtone.play();
+    } catch {
+      // audio unavailable (e.g. web autoplay policy); vibration still works
+    }
+    if (Platform.OS !== "web") {
+      Vibration.vibrate([600, 1000], true);
+    }
+    return () => {
+      try {
+        ringtone.pause();
+      } catch {
+        // already released
+      }
+      if (Platform.OS !== "web") Vibration.cancel();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [call?.status]);
 
   const styles = makeStyles(colors);

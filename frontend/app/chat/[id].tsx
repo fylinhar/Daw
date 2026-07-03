@@ -39,6 +39,15 @@ import { fonts, radius, spacing, ThemeColors } from "@/src/theme";
 import { api, Conversation, Message, mediaUrl } from "@/src/utils/api";
 import { clockTime } from "@/src/utils/time";
 
+/** RN-web's Alert.alert is a no-op — use window.alert on web so users always see feedback. */
+const notify = (title: string, message: string) => {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
+
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -53,6 +62,12 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [translating, setTranslating] = useState<string | null>(null);
+  const [corrections, setCorrections] = useState<
+    Record<string, { corrected: string; explanation: string }>
+  >({});
+  const [correcting, setCorrecting] = useState<string | null>(null);
+  const [draftFixing, setDraftFixing] = useState(false);
+  const [draftHint, setDraftHint] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [uploadingVoice, setUploadingVoice] = useState(false);
@@ -120,17 +135,42 @@ export default function ChatScreen() {
   };
 
   const startRecording = async () => {
-    const perm = await AudioModule.requestRecordingPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Microphone", "Microphone permission is needed for voice messages.");
-      return;
+    try {
+      let perm = await AudioModule.getRecordingPermissionsAsync();
+      if (!perm.granted) {
+        perm = await AudioModule.requestRecordingPermissionsAsync();
+      }
+      if (!perm.granted) {
+        if (Platform.OS !== "web" && !perm.canAskAgain) {
+          Alert.alert(
+            "Microphone",
+            "Microphone access is disabled. Enable it in Settings to send voice messages.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          notify(
+            "Microphone",
+            "Microphone permission is needed to record voice messages. Please allow microphone access and try again.",
+          );
+        }
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      setRecordSeconds(0);
+      setRecording(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {
+      setRecording(false);
+      notify(
+        "Microphone",
+        "Could not start recording. Make sure a microphone is available and allowed, then try again.",
+      );
     }
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setRecordSeconds(0);
-    setRecording(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   const cancelRecording = async () => {
@@ -178,7 +218,7 @@ export default function ChatScreen() {
       setMessages((prev) => [...prev, msg]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Voice message", "Could not send the voice message. Try again.");
+      notify("Voice message", "Could not send the voice message. Try again.");
     } finally {
       setUploadingVoice(false);
     }
@@ -220,7 +260,7 @@ export default function ChatScreen() {
       setMessages((prev) => [...prev, msg]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert("Photo", "Could not send the photo. Try again.");
+      notify("Photo", "Could not send the photo. Try again.");
     } finally {
       setUploadingImage(false);
     }
@@ -243,12 +283,64 @@ export default function ChatScreen() {
       });
       setTranslations((prev) => ({ ...prev, [msg.id]: result.translated }));
     } catch (e) {
-      Alert.alert(
+      notify(
         "Translate",
         e instanceof Error ? e.message : "Translation failed. Try again.",
       );
     } finally {
       setTranslating(null);
+    }
+  };
+
+  const correctMessage = async (msg: Message) => {
+    if (corrections[msg.id]) {
+      setCorrections((prev) => {
+        const next = { ...prev };
+        delete next[msg.id];
+        return next;
+      });
+      return;
+    }
+    setCorrecting(msg.id);
+    try {
+      const res = await api.post<{ corrected: string; explanation: string }>(
+        "/ai/correct",
+        { text: msg.text },
+      );
+      setCorrections((prev) => ({ ...prev, [msg.id]: res }));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e) {
+      notify(
+        "Correction",
+        e instanceof Error ? e.message : "Correction failed. Try again.",
+      );
+    } finally {
+      setCorrecting(null);
+    }
+  };
+
+  const fixDraft = async () => {
+    const text = draft.trim();
+    if (!text || draftFixing) return;
+    setDraftFixing(true);
+    try {
+      const res = await api.post<{ corrected: string; explanation: string }>(
+        "/ai/correct",
+        { text },
+      );
+      if (res.corrected && res.corrected !== text) {
+        setDraft(res.corrected);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setDraftHint(res.explanation || "Looks perfect!");
+      setTimeout(() => setDraftHint(null), 6000);
+    } catch (e) {
+      notify(
+        "AI Check",
+        e instanceof Error ? e.message : "Could not check the text. Try again.",
+      );
+    } finally {
+      setDraftFixing(false);
     }
   };
 
@@ -508,6 +600,7 @@ export default function ChatScreen() {
             renderItem={({ item }) => {
               const mine = item.sender_id === user?.id;
               const translated = translations[item.id];
+              const correction = corrections[item.id];
               const isVoice = item.type === "voice" && item.audio_id;
               const isImage = item.type === "image" && item.image_id;
               return (
@@ -551,28 +644,97 @@ export default function ChatScreen() {
                         </Text>
                       </View>
                     )}
+                    {correction && (
+                      <View style={styles.correctionBox}>
+                        <View style={styles.correctionHeader}>
+                          <Ionicons
+                            name="school"
+                            size={12}
+                            color={mine ? "#FFFFFF" : colors.success}
+                          />
+                          <Text
+                            style={[
+                              styles.correctionLabel,
+                              mine && { color: "rgba(255,255,255,0.85)" },
+                            ]}
+                          >
+                            Corrected
+                          </Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.correctionText,
+                            mine && styles.bubbleTextMine,
+                          ]}
+                        >
+                          {correction.corrected === item.text
+                            ? "✓ No mistakes found"
+                            : correction.corrected}
+                        </Text>
+                        {correction.explanation ? (
+                          <Text
+                            style={[
+                              styles.correctionExplain,
+                              mine && { color: "rgba(255,255,255,0.75)" },
+                            ]}
+                          >
+                            {correction.explanation}
+                          </Text>
+                        ) : null}
+                      </View>
+                    )}
                     <View style={styles.bubbleFooter}>
                       <Text
                         style={[styles.bubbleTime, mine && styles.bubbleTimeMine]}
                       >
                         {clockTime(item.created_at)}
                       </Text>
-                      {!mine && !isVoice && !isImage && (
-                        <Pressable
-                          testID={`translate-btn-${item.id}`}
-                          onPress={() => translate(item)}
-                          hitSlop={8}
-                        >
-                          {translating === item.id ? (
-                            <ActivityIndicator size="small" color={colors.brand} />
-                          ) : (
-                            <Ionicons
-                              name="language"
-                              size={16}
-                              color={translated ? colors.brand : colors.onSurfaceSecondary}
-                            />
+                      {!isVoice && !isImage && (
+                        <View style={styles.bubbleActions}>
+                          <Pressable
+                            testID={`correct-btn-${item.id}`}
+                            onPress={() => correctMessage(item)}
+                            hitSlop={8}
+                          >
+                            {correcting === item.id ? (
+                              <ActivityIndicator
+                                size="small"
+                                color={mine ? colors.onBrand : colors.brand}
+                              />
+                            ) : (
+                              <Ionicons
+                                name="pencil"
+                                size={15}
+                                color={
+                                  correction
+                                    ? mine
+                                      ? "#FFFFFF"
+                                      : colors.success
+                                    : mine
+                                      ? "rgba(255,255,255,0.7)"
+                                      : colors.onSurfaceSecondary
+                                }
+                              />
+                            )}
+                          </Pressable>
+                          {!mine && (
+                            <Pressable
+                              testID={`translate-btn-${item.id}`}
+                              onPress={() => translate(item)}
+                              hitSlop={8}
+                            >
+                              {translating === item.id ? (
+                                <ActivityIndicator size="small" color={colors.brand} />
+                              ) : (
+                                <Ionicons
+                                  name="language"
+                                  size={16}
+                                  color={translated ? colors.brand : colors.onSurfaceSecondary}
+                                />
+                              )}
+                            </Pressable>
                           )}
-                        </Pressable>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -605,6 +767,16 @@ export default function ChatScreen() {
             </Pressable>
           </View>
         ) : (
+          <>
+            {draftHint && (
+              <View style={styles.hintBar} testID="draft-hint-bar">
+                <Ionicons name="sparkles" size={14} color={colors.brand} />
+                <Text style={styles.hintText}>{draftHint}</Text>
+                <Pressable onPress={() => setDraftHint(null)} hitSlop={8}>
+                  <Ionicons name="close" size={16} color={colors.onSurfaceSecondary} />
+                </Pressable>
+              </View>
+            )}
           <View style={styles.inputRow}>
             <Pressable
               testID="chat-media-btn"
@@ -628,14 +800,28 @@ export default function ChatScreen() {
               multiline
             />
             {draft.trim() ? (
-              <Pressable
-                testID="chat-send-btn"
-                onPress={send}
-                style={[styles.sendBtn, sending && { opacity: 0.4 }]}
-                disabled={sending}
-              >
-                <Ionicons name="send" size={18} color={colors.onBrand} />
-              </Pressable>
+              <>
+                <Pressable
+                  testID="chat-ai-fix-btn"
+                  onPress={fixDraft}
+                  style={[styles.toolBtn, draftFixing && { opacity: 0.4 }]}
+                  disabled={draftFixing}
+                >
+                  {draftFixing ? (
+                    <ActivityIndicator size="small" color={colors.brand} />
+                  ) : (
+                    <Ionicons name="sparkles" size={19} color={colors.brand} />
+                  )}
+                </Pressable>
+                <Pressable
+                  testID="chat-send-btn"
+                  onPress={send}
+                  style={[styles.sendBtn, sending && { opacity: 0.4 }]}
+                  disabled={sending}
+                >
+                  <Ionicons name="send" size={18} color={colors.onBrand} />
+                </Pressable>
+              </>
             ) : (
               <Pressable
                 testID="chat-record-btn"
@@ -651,6 +837,7 @@ export default function ChatScreen() {
               </Pressable>
             )}
           </View>
+          </>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -840,6 +1027,58 @@ const makeStyles = (colors: ThemeColors) =>
       alignItems: "center",
       justifyContent: "space-between",
       gap: spacing.md,
+    },
+    bubbleActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    correctionBox: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingTop: spacing.xs + 2,
+      gap: 2,
+    },
+    correctionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    correctionLabel: {
+      fontFamily: fonts.textBold,
+      fontSize: 10,
+      color: colors.success,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    correctionText: {
+      fontFamily: fonts.textSemi,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.success,
+    },
+    correctionExplain: {
+      fontFamily: fonts.text,
+      fontSize: 12,
+      lineHeight: 17,
+      color: colors.onSurfaceSecondary,
+      fontStyle: "italic",
+    },
+    hintBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      backgroundColor: colors.brandTertiary,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    hintText: {
+      flex: 1,
+      fontFamily: fonts.textSemi,
+      fontSize: 12,
+      color: colors.brand,
     },
     bubbleTime: {
       fontFamily: fonts.text,
